@@ -1,8 +1,13 @@
 class Particle {
     constructor(l) {
+        this.spawnOrigin = l.copy();
+        this.reset();
+    }
+
+    reset() {
         // Start somewhat randomly in the top container
-        let startX = random(l.x - glassWidth / 2 + 20, l.x + glassWidth / 2 - 20);
-        let startY = random(l.y, l.y + 50);
+        let startX = random(this.spawnOrigin.x - glassWidth / 2 + 20, this.spawnOrigin.x + glassWidth / 2 - 20);
+        let startY = random(this.spawnOrigin.y, this.spawnOrigin.y + 50);
 
         this.pos = createVector(startX, startY);
         this.vel = createVector(0, 0);
@@ -38,37 +43,33 @@ class Particle {
             // Color transition based on Y position (Life stages)
             let t = map(this.pos.y, 50, height - 50, 0, 1);
             this.col = lerpColor(color(100, 255, 255), color(255, 200, 50), t);
+
+            // Safety check: if fell off screen
+            if (this.pos.y > height + 10) {
+                this.reset();
+            }
         }
     }
 
-    constrainToGlassTop() {
+    constrainToGlass() {
         let cx = width / 2;
         let dx = abs(this.pos.x - cx);
+        let yIndex = floor(this.pos.y);
 
-        // Simple funnel walls
-        // As Y increases towards Height/2, max width decreases
-        let progress = map(this.pos.y, 50, height / 2, 0, 1);
-        let maxWidth = map(progress, 0, 1, glassWidth / 2 - 5, neckWidth / 2 - 2);
+        if (yIndex >= 0 && yIndex < height) {
+            let maxWidth = glassBoundaries[yIndex];
 
-        if (dx > maxWidth) {
-            // Push back towards center
-            let force = createVector(cx - this.pos.x, 0);
-            force.normalize();
-            force.mult(0.2); // Gentle nudging wall
-            this.applyForce(force);
-
-            // Dampen velocity to prevent shooting out
-            this.vel.x *= 0.5;
-        }
-    }
-
-    constrainToGlassBottom() {
-        // Just keep them roughly inside the glass width
-        let cx = width / 2;
-        let dx = abs(this.pos.x - cx);
-        if (dx > glassWidth / 2 - 5) {
-            this.vel.x *= -0.5;
-            this.pos.x = constrain(this.pos.x, cx - glassWidth / 2 + 6, cx + glassWidth / 2 - 6);
+            // If outside the glass boundary
+            if (maxWidth > 0 && dx > maxWidth - 4) { // -4 padding for particle radius
+                // Push back towards center
+                if (this.pos.x > cx) {
+                    this.pos.x = cx + maxWidth - 4;
+                    this.vel.x *= -0.3; // Bounce with damping
+                } else {
+                    this.pos.x = cx - maxWidth + 4;
+                    this.vel.x *= -0.3;
+                }
+            }
         }
     }
 
@@ -78,6 +79,13 @@ class Particle {
         // Boundary check
         if (ix >= 0 && ix < width) {
             let groundY = pileHeights[ix];
+
+            // Check if we are outside the glass (hitting the floor)
+            // If groundY is effectively height (or close to it), it means we are outside the bowl
+            if (groundY >= height - 1) {
+                this.reset();
+                return;
+            }
 
             // If particle is near the "ground"
             if (this.pos.y >= groundY - 2) {

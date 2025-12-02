@@ -5,6 +5,8 @@ let pileHeights = [];
 let glassWidth = 300;
 let neckWidth = 20;
 
+let glassBoundaries = []; // Store max width for each Y
+
 function setup() {
   createCanvas(800, 600);
 
@@ -18,10 +20,51 @@ function setup() {
   // A Repeller that moves with mouse or stays static
   repeller = new Repeller(width / 2, height - 150);
 
+  // Calculate Glass Boundaries
+  // We need to map the bezier curves to an array of widths
+  // Since bezierPoint is tricky to inverse, we will simulate the curve drawing logic to fill the array
+  // Or simpler: use the same bezier logic but iterate t from 0 to 1
+
+  for (let i = 0; i < height; i++) glassBoundaries[i] = 0; // Init
+
+  let cx = width / 2;
+  let topY = 50;
+  let bottomY = height - 50;
+  let midY = height / 2;
+  let w = glassWidth / 2;
+  let nw = neckWidth / 2;
+
+  // Top Curve
+  for (let t = 0; t <= 1; t += 0.001) {
+    let x = bezierPoint(cx - w, cx - w, cx - nw, cx - nw, t);
+    let y = bezierPoint(topY, topY + 100, midY - 20, midY, t);
+    if (y >= 0 && y < height) {
+      glassBoundaries[floor(y)] = cx - x; // Store half-width
+    }
+  }
+
+  // Bottom Curve
+  for (let t = 0; t <= 1; t += 0.001) {
+    let x = bezierPoint(cx - nw, cx - nw, cx - w, cx - w, t);
+    let y = bezierPoint(midY + 20, midY + 50, bottomY - 100, bottomY, t);
+    if (y >= 0 && y < height) {
+      glassBoundaries[floor(y)] = x - cx; // Store half-width
+    }
+  }
+
+  // Fill in the neck gap (midY to midY+20)
+  for (let y = floor(midY); y <= floor(midY + 20); y++) {
+    glassBoundaries[y] = nw;
+  }
+
   // Initialize pile height map (simulating the ground/glass bottom)
   for (let i = 0; i < width; i++) {
     // Calculate the curve of the bottom glass
     let distFromCenter = abs(i - width / 2);
+    // Use our calculated boundaries for the bottom
+    // Find the Y where width matches this x
+    // This is inverse, hard. Let's keep the simple bowl shape for the pile bottom for now,
+    // but limit it to the glass width.
     if (distFromCenter < glassWidth / 2) {
       // Simple bowl shape equation
       let bowlY = height - 50 - Math.pow(distFromCenter / (glassWidth / 2), 2) * 50;

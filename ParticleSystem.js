@@ -41,11 +41,7 @@ class ParticleSystem {
             p.run();
 
             // Funneling logic for the top bulb
-            if (p.pos.y < height / 2) {
-                p.constrainToGlassTop();
-            } else {
-                p.constrainToGlassBottom();
-            }
+            p.constrainToGlass();
 
             // Check stacking collision
             if (!p.isLocked && p.pos.y > height / 2) {
