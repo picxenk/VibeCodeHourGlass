@@ -54,8 +54,11 @@ function draw() {
 
   // Particle System Logic
   // Spawn rate based on time (life flows continuously)
-  for (let i = 0; i < 2; i++) {
-    ps.addParticle();
+  // Limit total particles to prevent lag and simulate finite time
+  if (ps.particles.length < 2000) {
+    for (let i = 0; i < 2; i++) {
+      ps.addParticle();
+    }
   }
 
   // Apply forces

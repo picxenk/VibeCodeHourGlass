@@ -74,23 +74,48 @@ class Particle {
 
     checkPileCollision() {
         let ix = floor(this.pos.x);
-        // Boundary check for array access
+
+        // Boundary check
         if (ix >= 0 && ix < width) {
             let groundY = pileHeights[ix];
 
-            // If particle hits the "ground" or the top of the pile
-            if (this.pos.y >= groundY) {
-                this.pos.y = groundY;
-                this.isLocked = true;
-                this.vel.mult(0);
+            // If particle is near the "ground"
+            if (this.pos.y >= groundY - 2) {
 
-                // Update the pile height at this x location
-                // We spread the pile height slightly to simulate sand angle of repose
-                for (let k = -2; k <= 2; k++) {
-                    if (ix + k >= 0 && ix + k < width) {
-                        pileHeights[ix + k] -= (1.5 - abs(k) * 0.4);
-                    }
+                // Check neighbors to see if we can slide
+                let leftH = (ix > 0) ? pileHeights[ix - 1] : height;
+                let rightH = (ix < width - 1) ? pileHeights[ix + 1] : height;
+
+                // If we are significantly higher than neighbors, slide down
+                // The threshold (e.g., 2 or 3) determines the angle of repose
+                if (groundY < leftH - 3 && groundY < rightH - 3) {
+                    // Peak, slide randomly
+                    this.vel.x += random(-1, 1);
+                } else if (groundY < leftH - 3) {
+                    // Slide left (left is lower/deeper, so pileHeights value is larger)
+                    // Wait, pileHeights is Y coordinate. Larger Y means lower on screen.
+                    // So if groundY (current) < leftH (neighbor), current is HIGHER (visually) than neighbor.
+                    // We want to slide to the neighbor.
+                    this.vel.x -= 0.5;
+                } else if (groundY < rightH - 3) {
+                    // Slide right
+                    this.vel.x += 0.5;
+                } else {
+                    // Stable enough to rest
+                    this.pos.y = groundY;
+                    this.isLocked = true;
+                    this.vel.mult(0);
+
+                    // Update the pile height at this x location
+                    // We raise the ground (decrease Y)
+                    pileHeights[ix] -= 1;
+
+                    // Also slightly affect neighbors to smooth spikes? 
+                    // Maybe not needed if sliding works well.
                 }
+
+                // Damping when touching ground to simulate friction
+                this.vel.mult(0.5);
             }
         }
     }
